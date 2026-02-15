@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Tarot • Telegram Mini App</title>
+  <meta name="theme-color" content="#0b0713" />
+  <style>
+    :root{
+      --bg:#07050c;
+      --card:rgba(20, 14, 33, .72);
+      --card2:rgba(16, 10, 26, .65);
+      --text:#f2ecff;
+      --muted:rgba(242,236,255,.75);
+      --line:rgba(255,255,255,.14);
+      --glow:rgba(190,120,255,.28);
+      --gold:#ffd58a;
+      --violet:#caa8ff;
+      --accent:#8f63ff;
+      --accent2:#3dd7ff;
+      --danger:#ff4d6d;
+      --ok:#3dffb2;
+
+      --radius:22px;
+      --shadow: 0 22px 60px rgba(0,0,0,.55);
+      --shadow2: 0 10px 24px rgba(0,0,0,.40);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      background: var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      overflow-x:hidden;
+    }
+
+    /* фон */
+    .bg{
+      position:fixed; inset:0;
+      background:
+        radial-gradient(1200px 800px at 70% 10%, rgba(143,99,255,.20), transparent 55%),
+        radial-gradient(900px 700px at 10% 20%, rgba(61,215,255,.14), transparent 55%),
+        radial-gradient(900px 700px at 40% 90%, rgba(255,213,138,.10), transparent 55%),
+        linear-gradient(180deg, rgba(7,5,12,.75), rgba(7,5,12,.92));
+      z-index:-3;
+    }
+    .bg::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image: url("fon.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat:no-repeat;
+      opacity:.28;               /* регулируй если фон яркий */
+      filter: saturate(1.1) contrast(1.05) blur(.0px);
+      transform: scale(1.02);
+    }
+    .bg::after{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(900px 700px at 50% 30%, rgba(255,255,255,.06), transparent 60%),
+        repeating-radial-gradient(circle at 20% 80%, rgba(255,255,255,.05) 0 1px, transparent 1px 10px);
+      opacity:.28;
+      mix-blend-mode: screen;
+      pointer-events:none;
+    }
+
+    /* контейнер */
+    .wrap{
+      max-width:980px;
+      margin: 0 auto;
+      padding: clamp(14px, 3.2vw, 26px);
+      padding-bottom: 120px;
+    }
+
+    /* верх */
+    .top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-top: 8px;
+    }
+    .brand{
+      display:flex; gap:12px; align-items:center;
+    }
+    .sigil{
+      width:44px; height:44px;
+      border-radius:14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,213,138,.35), transparent 55%),
+        radial-gradient(circle at 70% 70%, rgba(143,99,255,.35), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 0 0 6px rgba(143,99,255,.09), 0 18px 40px rgba(0,0,0,.45);
+      position:relative;
+      overflow:hidden;
+    }
+    .sigil:before{
+      content:"✦";
+      position:absolute; inset:0;
+      display:grid; place-items:center;
+      font-size: 22px;
+      color: rgba(255,213,138,.95);
+      text-shadow: 0 0 18px rgba(255,213,138,.35);
+    }
+    .title{
+      display:flex;
+      flex-direction:column;
+      line-height:1.05;
+    }
+    .title h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.2px;
+      font-weight: 760;
+    }
+    .title p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size: 12.5px;
+    }
+
+    .pillbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+
+    .pill{
+      padding:10px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(12, 9, 20, .62);
+      box-shadow: var(--shadow2);
+      display:flex; gap:8px; align-items:center;
+      font-size:12.5px;
+      color: var(--muted);
+      user-select:none;
+      backdrop-filter: blur(10px);
+    }
+    .dot{
+      width:8px;height:8px;border-radius:99px;
+      background: rgba(61,255,178,.9);
+      box-shadow: 0 0 0 5px rgba(61,255,178,.12);
+    }
+    .dot.warn{
+      background: rgba(255,213,138,.95);
+      box-shadow: 0 0 0 5px rgba(255,213,138,.12);
+    }
+
+    /* сетка */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    @media (max-width: 920px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+      position:relative;
+    }
+    .card .inner{
+      padding: 16px;
+    }
+    .card:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(800px 420px at 10% 0%, rgba(143,99,255,.22), transparent 60%),
+        radial-gradient(700px 380px at 90% 0%, rgba(61,215,255,.14), transparent 60%),
+        radial-gradient(700px 380px at 50% 120%, rgba(255,213,138,.12), transparent 60%);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    /* зона расклада */
+    .hero{
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+    .hero h2{
+      margin:0;
+      font-size: 16px;
+      font-weight: 760;
+      letter-spacing:.15px;
+    }
+    .hero p{
+      margin:0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height:1.5;
+    }
+
+    .controls{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      margin-top: 6px;
+      align-items:center;
+    }
+
+    .input{
+      flex: 1 1 260px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(12, 8, 18, .55);
+      backdrop-filter: blur(12px);
+    }
+    .input span{
+      opacity:.85;
+      filter: drop-shadow(0 0 10px rgba(143,99,255,.25));
+    }
+    .input input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color:var(--text);
+      font-size: 13.5px;
+    }
+    .input input::placeholder{ color: rgba(242,236,255,.55); }
+
+    .btn{
+      appearance:none;
+      border:0;
+      outline:none;
+      padding: 12px 14px;
+      border-radius: 16px;
+      color: var(--text);
+      font-weight: 740;
+      font-size: 13px;
+      letter-spacing:.15px;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .08s ease, filter .12s ease, opacity .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      box-shadow: var(--shadow2);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(16, 10, 26, .58);
+      backdrop-filter: blur(10px);
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; }
+
+    .btn.primary{
+      border-color: rgba(143,99,255,.35);
+      background:
+        radial-gradient(140px 120px at 20% 30%, rgba(255,213,138,.25), transparent 60%),
+        radial-gradient(220px 160px at 80% 30%, rgba(61,215,255,.22), transparent 60%),
+        linear-gradient(135deg, rgba(143,99,255,.75), rgba(143,99,255,.25));
+    }
+    .btn.gold{
+      border-color: rgba(255,213,138,.45);
+      background:
+        radial-gradient(220px 160px at 20% 30%, rgba(255,213,138,.35), transparent 60%),
+        linear-gradient(135deg, rgba(255,213,138,.22), rgba(143,99,255,.12));
+      color: #fff6e6;
+    }
+    .btn.ghost{
+      background: rgba(12, 8, 18, .35);
+      border-color: rgba(255,255,255,.12);
+      color: rgba(242,236,255,.86);
+    }
+
+    /* выбор расклада */
+    .spreadbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .chip{
+      padding:10px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(12, 8, 18, .40);
+      color: rgba(242,236,255,.80);
+      font-size: 12.5px;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .08s ease, border-color .12s ease, background .12s ease;
+    }
+    .chip:hover{ transform: translateY(-1px); }
+    .chip.active{
+      border-color: rgba(143,99,255,.45);
+      background: rgba(143,99,255,.20);
+      color: rgba(242,236,255,.96);
+      box-shadow: 0 0 0 6px rgba(143,99,255,.08);
+    }
+
+    /* результаты */
+    .result{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(9, 6, 14, .52);
+      padding: 14px;
+      margin-top: 10px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .resultHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .badge{
+      font-size: 12px;
+      color: rgba(242,236,255,.86);
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 8px 10px;
+      border-radius: 999px;
+    }
+    .badge.ok{ border-color: rgba(61,255,178,.35); background: rgba(61,255,178,.10); }
+    . .badge.warn{ border-color: rgba(255,213,138,.35); background: rgba(255,213,138,.10); }
+    .resultText{
+      color: rgba(242,236,255,.88);
+      font-size: 13.5px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    /* правая колонка */
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap: 18px;
+    }
+
+    .plan{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .plan h3{
+      margin:0;
+      font-size: 14.5px;
+      font-weight: 760;
+      letter-spacing:.1px;
+    }
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .li{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(12, 8, 18, .40);
+    }
+    .li b{ font-size: 13px; }
+    .li span{ color: var(--muted); font-size: 12.5px; line-height:1.35; }
+
+    .miniRow{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .miniRow .btn{
+      flex: 1 1 180px;
+      justify-content:center;
+    }
+
+    /* нижняя панель */
+    .footerbar{
+      position: fixed;
+      left:0; right:0; bottom:0;
+      padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, transparent, rgba(7,5,12,.86) 26%, rgba(7,5,12,.96));
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      justify-content:center;
+      z-index:10;
+    }
+    .footerbar .inner{
+      width:min(980px, 100%);
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .small{
+      font-size: 12px;
+      color: rgba(242,236,255,.72);
+    }
+    .link{
+      color: rgba(143,99,255,.95);
+      text-decoration:none;
+      font-weight: 700;
+    }
+    .link:hover{ text-decoration:underline; }
+
+    /* модалка */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.60);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 50;
+    }
+    .modal{
+      width: min(560px, 100%);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(18, 12, 28, .82);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 30px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      position:relative;
+    }
+    .modal:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(650px 360px at 20% 0%, rgba(255,213,138,.16), transparent 60%),
+        radial-gradient(650px 360px at 80% 0%, rgba(61,215,255,.12), transparent 60%),
+        radial-gradient(750px 420px at 50% 120%, rgba(143,99,255,.18), transparent 65%);
+      pointer-events:none;
+    }
+    .modal .content{
+      position:relative;
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .modal h4{
+      margin:0;
+      font-size: 15.5px;
+      font-weight: 800;
+      letter-spacing:.12px;
+    }
+    .modal p{
+      margin:0;
+      color: rgba(242,236,255,.80);
+      font-size: 13px;
+      line-height:1.5;
+    }
+    .modal .row{
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .modal .row .btn{ flex: 1 1 200px; justify-content:center; }
+
+    /* небольшой “звёздный” символ */
+    .star{
+      width:18px; height:18px;
+      display:inline-grid;
+      place-items:center;
+      border-radius: 7px;
+      background: rgba(255,213,138,.16);
+      border: 1px solid rgba(255,213,138,.30);
+      color: rgba(255,213,138,.95);
+      text-shadow: 0 0 12px rgba(255,213,138,.25);
+      font-size: 12px;
+    }
+
+    /* toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 92px;
+      background: rgba(18,12,28,.88);
+      border:1px solid rgba(255,255,255,.16);
+      color: rgba(242,236,255,.92);
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: var(--shadow2);
+      display:none;
+      z-index: 60;
+      max-width: min(520px, 92vw);
+      font-size: 13px;
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="sigil" aria-hidden="true"></div>
+        <div class="title">
+          <h1>Таро • Оракул</h1>
+          <p>Один бесплатный расклад в день · Premium — без ограничений</p>
+        </div>
+      </div>
+
+      <div class="pillbar">
+        <div class="pill" id="pillStatus">
+          <span class="dot" id="dot"></span>
+          <span id="statusText">Готово</span>
+        </div>
+        <div class="pill">
+          <span class="star">★</span>
+          <span><b id="freeLeft">1</b> бесплатный сегодня</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- ЛЕВО: расклад -->
+      <section class="card">
+        <div class="inner hero">
+          <div>
+            <h2>Сформулируй вопрос</h2>
+            <p>Пиши коротко и конкретно. Выбери расклад и нажми “Получить ответ”. Сейчас всё работает без сервера: ответы генерируются локально (заглушка).</p>
+          </div>
+
+          <div class="controls">
+            <div class="input" title="Вопрос">
+              <span>✶</span>
+              <input id="question" maxlength="160" placeholder="Например: Что меня ждёт в ближайшие 7 дней?" />
+            </div>
+            <button class="btn primary" id="btnAsk">
+              <span>Получить ответ</span>
+              <span class="star">★</span>
+            </button>
+            <button class="btn ghost" id="btnShuffle" title="Перетасовать">
+              🔮 Перемешать
+            </button>
+          </div>
+
+          <div class="spreadbar" id="spreadbar">
+            <div class="chip active" data-spread="one">1 карта</div>
+            <div class="chip" data-spread="three">3 карты</div>
+            <div class="chip" data-spread="celtic">Кельтский крест (lite)</div>
+            <div class="chip" data-spread="love">Любовь</div>
+            <div class="chip" data-spread="career">Карьера</div>
+          </div>
+
+          <div class="result" id="result">
+            <div class="resultHead">
+              <div class="badge ok" id="resultBadge">Сессия: демо</div>
+              <div class="badge" id="resultMeta">Ожидаю вопрос…</div>
+            </div>
+            <div class="resultText" id="resultText">
+Напиши вопрос и нажми “Получить ответ”.
+Бесплатно: 1 запрос в день (в демо — локально).
+Premium: кнопка есть, оплату подключим позже.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ПРАВО: премиум и инфо -->
+      <aside class="side">
+        <section class="card">
+          <div class="inner plan">
+            <h3>Premium подписка</h3>
+            <div class="list">
+              <div class="li">
+                <div class="star">★</div>
+                <div>
+                  <b>Без лимитов</b><br/>
+                  <span>Сколько угодно раскладов в день</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="star">★</div>
+                <div>
+                  <b>Продвинутые расклады</b><br/>
+                  <span>Доп. режимы и интерпретации (позже)</span>
+                </div>
+              </div>
+              <div class="li">
+                <div class="star">★</div>
+                <div>
+                  <b>История и избранное</b><br/>
+                  <span>Сохранение раскладов (позже)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="miniRow">
+              <button class="btn gold" id="btnPremium">
+                Купить Premium
+                <span class="star">★</span>
+              </button>
+              <button class="btn ghost" id="btnInfo">Как это работает</button>
+            </div>
+            <p style="margin:0;color:rgba(242,236,255,.70);font-size:12.5px;line-height:1.45;">
+              Сейчас кнопка Premium — заглушка. Позже подключим оплату звёздами через Telegram.
+            </p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="inner plan">
+            <h3>Мини-настройки</h3>
+            <div class="list">
+              <div class="li">
+                <div>🌓</div>
+                <div>
+                  <b>Тема Telegram</b><br/>
+                  <span>Подхватим цвета/фон (если доступно)</span>
+                </div>
+              </div>
+              <div class="li">
+                <div>🔕</div>
+                <div>
+                  <b>Без сервера</b><br/>
+                  <span>Лимит “1/день” хранится в браузере</span>
+                </div>
+              </div>
+              <div class="li">
+                <div>🧿</div>
+                <div>
+                  <b>Загадочный стиль</b><br/>
+                  <span>Использует фон <code>fon.png</code> + свечение</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Нижняя панель -->
+  <div class="footerbar">
+    <div class="inner">
+      <div class="small">
+        © <span id="year"></span> Tarot Mini App ·
+        <a class="link" href="#" id="btnReset">Сбросить лимит (тест)</a>
+      </div>
+      <button class="btn ghost" id="btnShare">Поделиться</button>
+    </div>
+  </div>
+
+  <!-- Модалка -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="content">
+        <h4 id="modalTitle">Заголовок</h4>
+        <p id="modalText">Текст</p>
+        <div class="row">
+          <button class="btn ghost" id="modalClose">Закрыть</button>
+          <button class="btn gold" id="modalAction">Ок</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Telegram WebApp (не обязателен для GitHub Pages — но в Telegram заработает)
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+    // ---- Состояние (локально) ----
+    const LS_KEY = "tarot_free_daily_v1";
+    const LS_PREMIUM = "tarot_premium_demo_v1";
+    let spread = "one";
+
+    // мини-колода для демо (заглушка)
+    const DECK = [
+      { name: "Шут", meaning: "Новый цикл, спонтанность, шаг в неизвестность. Делай проще — и увидишь шанс." },
+      { name: "Маг", meaning: "Ресурсы уже у тебя. Важны фокус и намерение. Действуй, не откладывай." },
+      { name: "Жрица", meaning: "Интуиция сильнее логики. Тихая информация важнее громких слов." },
+      { name: "Императрица", meaning: "Рост, изобилие, забота. Дай идее питание — и она вырастет." },
+      { name: "Император", meaning: "Структура, границы, дисциплина. Укрепи основу — и станет легче." },
+      { name: "Влюблённые", meaning: "Выбор и ценности. Важно решать сердцем, но честно смотреть на последствия." },
+      { name: "Колесо Фортуны", meaning: "Поворот событий. Лови волну, но не пытайся контролировать всё." },
+      { name: "Сила", meaning: "Мягкая мощь, выдержка. Победа через спокойствие, а не давление." },
+      { name: "Отшельник", meaning: "Пауза и анализ. Твой ответ внутри — просто выключи шум." },
+      { name: "Солнце", meaning: "Ясность, удача, открытость. Покажи себя миру — это сыграет в плюс." },
+      { name: "Луна", meaning: "Туман, эмоции, скрытые мотивы. Не спеши — проверь факты." },
+      { name: "Мир", meaning: "Завершение и результат. Ты близко к финалу — закрепи успех." },
+    ];
+
+    function todayKey() {
+      // ключ на конкретный день по локальному времени
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function getState() {
+      const raw = localStorage.getItem(LS_KEY);
+      const key = todayKey();
+      let data = { day: key, used: 0 };
+      try {
+        if (raw) data = JSON.parse(raw);
+      } catch(e){}
+      // новый день — сброс
+      if (data.day !== key) data = { day: key, used: 0 };
+      return data;
+    }
+
+    function setState(data) {
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function isPremium() {
+      return localStorage.getItem(LS_PREMIUM) === "1";
+    }
+
+    function setPremiumDemo(v) {
+      localStorage.setItem(LS_PREMIUM, v ? "1" : "0");
+    }
+
+    function freeLeft() {
+      const s = getState();
+      return Math.max(0, 1 - (s.used || 0));
+    }
+
+    // ---- UI helpers ----
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(text, warn=false){
+      $("statusText").textContent = text;
+      $("dot").classList.toggle("warn", !!warn);
+    }
+
+    function toast(msg){
+      const el = $("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(toast._t);
+      toast._t = setTimeout(()=> el.style.display="none", 2200);
+    }
+
+    function openModal(title, text, actionText="Ок", onAction=null){
+      $("modalTitle").textContent = title;
+      $("modalText").textContent = text;
+      $("modalAction").textContent = actionText;
+      $("modalOverlay").style.display = "flex";
+      $("modalOverlay").setAttribute("aria-hidden", "false");
+      openModal._onAction = onAction;
+    }
+
+    function closeModal(){
+      $("modalOverlay").style.display = "none";
+      $("modalOverlay").setAttribute("aria-hidden", "true");
+      openModal._onAction = null;
+    }
+
+    // ---- Tarot logic (demo) ----
+    function pickCards(n){
+      // простая псевдо-случайность
+      const pool = [...DECK];
+      const cards = [];
+      for(let i=0;i<n;i++){
+        const idx = Math.floor(Math.random() * pool.length);
+        cards.push(pool.splice(idx,1)[0]);
+      }
+      return cards;
+    }
+
+    function spreadCount(sp){
+      if (sp === "one") return 1;
+      if (sp === "three") return 3;
+      if (sp === "celtic") return 5;   // lite
+      if (sp === "love") return 3;
+      if (sp === "career") return 3;
+      return 1;
+    }
+
+    function spreadTitle(sp){
+      const map = {
+        one: "1 карта",
+        three: "3 карты",
+        celtic: "Кельтский крест (lite)",
+        love: "Любовь",
+        career: "Карьера",
+      };
+      return map[sp] || "Расклад";
+    }
+
+    function generateReading(question, sp){
+      const n = spreadCount(sp);
+      const cards = pickCards(n);
+
+      let header = `Расклад: ${spreadTitle(sp)}\nВопрос: ${question || "—"}\n\n`;
+      let body = cards.map((c, i) => {
+        let pos = "";
+        if (sp === "three") pos = ["Прошлое", "Настоящее", "Будущее"][i] || `Позиция ${i+1}`;
+        else if (sp === "love") pos = ["Ты", "Партнёр/ситуация", "Совет"][i] || `Позиция ${i+1}`;
+        else if (sp === "career") pos = ["Сейчас", "Что мешает", "Шанс/совет"][i] || `Позиция ${i+1}`;
+        else if (sp === "celtic") pos = ["Суть", "Препятствие", "Опора", "Тенденция", "Итог"][i] || `Позиция ${i+1}`;
+        else pos = `Позиция ${i+1}`;
+
+        return `✦ ${pos}: ${c.name}\n   ${c.meaning}`;
+      }).join("\n\n");
+
+      // небольшая “магическая” концовка
+      const tail = `\n\nПодсказка: выбери 1 действие на ближайшие 24 часа — маленький шаг сильнее сомнений.`;
+
+      return { cards, text: header + body + tail };
+    }
+
+    // ---- Daily limit (demo) ----
+    function canAsk(){
+      if (isPremium()) return true;
+      return freeLeft() > 0;
+    }
+
+    function consumeAsk(){
+      if (isPremium()) return;
+      const s = getState();
+      s.used = (s.used || 0) + 1;
+      setState(s);
+    }
+
+    function updateCounters(){
+      $("freeLeft").textContent = isPremium() ? "∞" : String(freeLeft());
+      $("resultBadge").textContent = isPremium() ? "Сессия: Premium (демо)" : "Сессия: демо";
+    }
+
+    function updateAskButton(){
+      const ok = canAsk();
+      $("btnAsk").disabled = !ok;
+      if (!ok){
+        setStatus("Лимит на сегодня исчерпан", true);
+      } else {
+        setStatus(isPremium() ? "Premium активен (демо)" : "Готово", false);
+      }
+    }
+
+    // ---- Telegram theme (optional) ----
+    function applyTelegramTheme(){
+      if (!tg) return;
+      try{
+        tg.expand();
+        const t = tg.themeParams || {};
+        // мягкая интеграция: если есть text_color / bg_color — подмешаем (очень аккуратно)
+        // НЕ ломаем наш стиль, только чуть подстроим прозрачности
+        if (t.text_color) {
+          document.documentElement.style.setProperty("--text", t.text_color);
+        }
+      } catch(e){}
+    }
+
+    // ---- Events ----
+    $("year").textContent = new Date().getFullYear();
+
+    $("btnShuffle").addEventListener("click", ()=>{
+      toast("Колода перемешана ✨");
+      setStatus("Перемешано", false);
+    });
+
+    document.querySelectorAll(".chip").forEach(ch=>{
+      ch.addEventListener("click", ()=>{
+        document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
+        ch.classList.add("active");
+        spread = ch.dataset.spread;
+        toast(`Выбран расклад: ${spreadTitle(spread)}`);
+      });
+    });
+
+    $("btnAsk").addEventListener("click", ()=>{
+      const q = $("question").value.trim();
+      if (!canAsk()){
+        openModal("Лимит на сегодня", "У тебя уже был бесплатный запрос сегодня. Подключи Premium (пока заглушка) или попробуй завтра.", "Понятно");
+        updateAskButton();
+        return;
+      }
+
+      // делаем “эффект ожидания”
+      setStatus("Смотрю знаки…", false);
+      $("resultMeta").textContent = "Идёт расклад…";
+      $("resultText").textContent = "…";
+
+      const started = Date.now();
+
+      setTimeout(()=>{
+        const r = generateReading(q, spread);
+        consumeAsk();
+
+        const ms = Date.now() - started;
+        $("resultMeta").textContent = `Готово за ${ms} мс · ${todayKey()}`;
+        $("resultText").textContent = r.text;
+
+        updateCounters();
+        updateAskButton();
+        toast("Ответ получен 🔮");
+      }, 650);
+    });
+
+    $("btnPremium").addEventListener("click", ()=>{
+      // Пока без оплаты — показываем заглушку.
+      openModal(
+        "Premium — скоро",
+        "Здесь будет оплата звёздами Telegram.\n\nСейчас можно включить Premium в демо-режиме (локально на устройстве), чтобы проверить UX.",
+        "Включить демо Premium",
+        ()=>{
+          setPremiumDemo(true);
+          updateCounters();
+          updateAskButton();
+          closeModal();
+          toast("Premium демо включён ✨");
+        }
+      );
+    });
+
+    $("btnInfo").addEventListener("click", ()=>{
+      openModal(
+        "Как работает",
+        "• 1 бесплатный запрос в день — хранится локально в браузере.\n• Premium сейчас заглушка (позже подключим звёзды).\n• Ответы в демо генерируются локально — позже подключим сервер/AI.",
+        "Ок"
+      );
+    });
+
+    $("btnReset").addEventListener("click", (e)=>{
+      e.preventDefault();
+      localStorage.removeItem(LS_KEY);
+      toast("Лимит сброшен (тест)");
+      updateCounters();
+      updateAskButton();
+    });
+
+    $("btnShare").addEventListener("click", ()=>{
+      const txt = "Я пользуюсь Tarot Mini App 🔮";
+      if (tg) {
+        try{
+          tg.showPopup({
+            title: "Поделиться",
+            message: "Пока без deep-link. Позже добавим реферальную ссылку/шеринг.",
+            buttons: [{type:"close"}]
+          });
+          return;
+        } catch(e){}
+      }
+      if (navigator.share){
+        navigator.share({ title:"Tarot Mini App", text: txt }).catch(()=>{});
+      } else {
+        toast("Шеринг пока недоступен здесь");
+      }
+    });
+
+    $("modalClose").addEventListener("click", closeModal);
+    $("modalOverlay").addEventListener("click", (e)=>{
+      if (e.target === $("modalOverlay")) closeModal();
+    });
+    $("modalAction").addEventListener("click", ()=>{
+      if (typeof openModal._onAction === "function") openModal._onAction();
+      else closeModal();
+    });
+
+    // init
+    applyTelegramTheme();
+    updateCounters();
+    updateAskButton();
+
+    // если мы внутри Telegram — включим MainButton примером (не обязательно)
+    if (tg){
+      try{
+        tg.ready();
+        tg.MainButton.setText("Premium ★");
+        tg.MainButton.hide(); // пока не используем, оставим скрытым
+      } catch(e){}
+    }
+  </script>
+</body>
+</html>
